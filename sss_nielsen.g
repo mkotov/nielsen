@@ -1,7 +1,7 @@
 # This is an implementation of the secret sharing scheme based on Nielsen transformations from 
 # A. Moldenhauer, G. Rosenberger "Criptogrphic protocols based on Nielsen transformations", Section 4. 
 #
-# Matvei Kotov, Alexander Ushakov, 2015.
+# Alexander Ushakov, Matvei Kotov, 2015.
 
 LoadPackage("automata");
 
@@ -104,12 +104,12 @@ end;
 
 
 # Returns a random list of size m of words of a free group F.
-GenerateRandomListOfWords := function(F, m)
+GenerateRandomListOfWords := function(F, m, d, D)
   local i, w, ws;
   ws := [];
   for i in [1..m] do
     repeat
-      w := PseudoRandom(F: radius := 5);
+      w := PseudoRandom(F: radius := Random([d, D]));
     until not IsOne(w);
     Add(ws, w);
   od;
@@ -127,13 +127,25 @@ ReduceSet := function(words)
 end;
 
 
+# Returns true if the lengths of all words in an interval [d, D].
+TestWordLengths := function(gs, d, D)
+  local g;
+  for g in gs do
+    if Length(g) < d or Length(g) > D then
+      return false;    
+    fi;
+  od;
+  return true;
+end;
+
+
 # Generates a random reduced set.
-GenerateRandomReducedSet := function(F, m)
+GenerateRandomReducedSet := function(F, m, d, D)
   local ws, reduced;
   repeat
-    ws := GenerateRandomListOfWords(F, m);
+    ws := GenerateRandomListOfWords(F, m, d, D);
     reduced := ReduceSet(ws);
-  until Length(reduced) = m;
+  until Length(reduced) = m and TestWordLengths(reduced, d, D);
   return reduced;
 end;
 

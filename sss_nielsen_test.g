@@ -1,16 +1,33 @@
-# This is a test of the attack on the secret sharing scheme based on Nielsen transformations from 
-# A. Moldenhauer, G. Rosenberger "Criptogrphic protocols based on Nielsen transformations", Section 4. 
+# This is a test of the attack on the secret sharing scheme based on Nielsen transformations. 
 #
-# Matvei Kotov, Alexander Ushakov, 2015.
+# Alexander Ushakov, Matvei Kotov, 2015.
 
 Read("sss_nielsen_attack.g");
 
-us := GenerateRandomReducedSet(F, m);
+# Minimal size of u_i.
+d := 5;
 
-sharedSecret := ShareSecret(n, t, ApplyRandomNielsenTransform(us, 10));
+# Maximal size of u_i.
+D := 8;
 
-secret := FindSecret(sharedSecret{[2..Length(sharedSecret)]});
+N := 10;
 
-Display(secret);
-
-GetPossibleSecrets(sharedSecret[1], 5);
+for i in [1..100] do
+  us := GenerateRandomReducedSet(F, m, d, D);
+  Print("us: ", us, "\n");
+  vs := ApplyRandomNielsenTransform(us, N);
+  Print("vs: ", vs, "\n");
+  sharedSecret := ShareSecret(n, t, vs);
+  secret := FindSecret(sharedSecret{[2..Length(sharedSecret)]});
+  Print("secret: ", secret, "\n");
+  startTime := Runtime();
+  possible := GetPossibleSecrets(sharedSecret[1], d, D);
+  endTime := Runtime();
+  Print("possible secrets: ", possible, "\n");
+  Print("time (ms): ", endTime - startTime, "\n");
+  if not secret in possible then
+    Print("ERROR\n");
+  else 
+    Print("OK\n");
+  fi;
+od;
