@@ -1,3 +1,8 @@
+# This is a test of the attack on the secret sharing scheme based on Nielsen transformations from 
+# A. Moldenhauer, G. Rosenberger "Criptogrphic protocols based on Nielsen transformations", Section 4. 
+#
+# Matvei Kotov, Alexander Ushakov, 2015.
+
 Read("sss_nielsen_attack.g");
 
 us := GenerateRandomReducedSet(F, m);
