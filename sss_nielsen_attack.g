@@ -1,6 +1,12 @@
+# This is an implementation of an attack on the secret sharing scheme based on Nielsen transformations from 
+# A. Moldenhauer, G. Rosenberger "Criptogrphic protocols based on Nielsen transformations", Section 4. 
+#
+# Matvei Kotov, Alexander Ushakov, 2015.
+
 Read("sss_nielsen.g");
 
 # This function is a modified copy of inner function indentify() from function FoldFlowerAutomaton from package "automata".
+# Returns the matrix T' where states p1 and p2 are glued. 
 IdentifyVerices := function(T, na, ns, p1, p2)
   local a, q;
   if p2 = 1 then # let the initial state never be removed
@@ -27,6 +33,7 @@ end;
 
 
 # This function is a modified copy of inner function deleteAndRename() from function FoldFlowerAutomaton from package "automata".
+# Deletes from matrix T vertices from a list c.
 DeleteAndRenameVertices := function(T, c) 
   local TR, acc, nt, newtable, n1, n2, newnewtable, r, s;
   TR := TransposedMat(T);
@@ -233,4 +240,3 @@ GetPossibleSecrets := function(words, L)
   s2 := GetSecretsForExtendedAutomatons(A, L);
   return Union(s1, s2);
 end;
-
