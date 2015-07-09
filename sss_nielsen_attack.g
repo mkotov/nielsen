@@ -1,12 +1,11 @@
-# This is an implementation of an attack on the secret sharing scheme based on Nielsen transformations from 
-# A. Moldenhauer, G. Rosenberger "Criptogrphic protocols based on Nielsen transformations", Section 4. 
+# This is an implementation of the attack on the secret sharing scheme based on Nielsen transformations. 
 #
-# Matvei Kotov, Alexander Ushakov, 2015.
+# Alexander Ushakov, Matvei Kotov, 2015.
 
 Read("sss_nielsen.g");
 
+# Glues two states p1 and p2 in a matrix T.
 # This function is a modified copy of inner function indentify() from function FoldFlowerAutomaton from package "automata".
-# Returns the matrix T' where states p1 and p2 are glued. 
 IdentifyVerices := function(T, na, ns, p1, p2)
   local a, q;
   if p2 = 1 then # let the initial state never be removed
@@ -32,8 +31,8 @@ IdentifyVerices := function(T, na, ns, p1, p2)
 end;
 
 
+# Deletes a list of states c from a matrix T. 
 # This function is a modified copy of inner function deleteAndRename() from function FoldFlowerAutomaton from package "automata".
-# Deletes from matrix T vertices from a list c.
 DeleteAndRenameVertices := function(T, c) 
   local TR, acc, nt, newtable, n1, n2, newnewtable, r, s;
   TR := TransposedMat(T);
@@ -188,6 +187,7 @@ FoldAutomaton := function(A)
   return Automaton("det", Length(newtable[1]), na, newtable,[1],[1]);
 end;
 
+
 # Transforms a deterministic automaton A to non-deterministic.
 DetToNonDet := function(A)
   return Automaton("nondet", 
@@ -198,31 +198,36 @@ DetToNonDet := function(A)
       FinalStatesOfAutomaton(A)); 
 end;
 
+
 # Enumerates all pairs of vertices and glues an automaton on these pairs.
-GetSecretsForGluedAutomatons := function(A)  
-  local i, j, B, gs, result; 
+GetSecretsForGluedAutomatons := function(A, d, D)  
+  local i, j, g, B, gs, result; 
   result := []; 
   for i in [1..NumberStatesOfAutomaton(A)] do
     for j in [(i + 1)..NumberStatesOfAutomaton(A)] do
       B := FoldAutomaton(GlueTwoVerticesOfAutomaton(A, i, j));
       gs := InverseAutomatonToGenerators(B);
-      AddSet(result, GetSecretSum(gs{[2..Length(gs)]}));
+      if TestWordLengths(gs{[2..Length(gs)]}, d, D) then
+        AddSet(result, GetSecretSum(gs{[2..Length(gs)]}));
+      fi;
     od;
   od;
   return result;
 end;
 
 
-# Enumerates all pairs of vertices and glues an automaton on these pairs.
-GetSecretsForExtendedAutomatons := function(A, L)  
-  local i, j, l, B, gs, result; 
+# Enumerates all pairs of vertices and extends an automaton on these pairs. Returns the secret sum calculated on every automaton.
+GetSecretsForExtendedAutomatons := function(A, d, D)  
+  local i, j, l, B, g, gs, result; 
   result := []; 
   for i in [1..NumberStatesOfAutomaton(A)] do
     for j in [i..NumberStatesOfAutomaton(A)] do
-      for l in [1..L] do
+      for l in [1..D] do
         B := FoldAutomaton(InsertArcToAutomaton(A, i, j, l));
         gs := InverseAutomatonToGenerators(B);
-        AddSet(result, GetSecretSum(gs{[2..Length(gs)]}));
+        if TestWordLengths(gs{[2..Length(gs)]}, d, D) then
+          AddSet(result, GetSecretSum(gs{[2..Length(gs)]}));
+        fi;
       od;
     od;
   od;
@@ -231,12 +236,12 @@ end;
 
 
 # Implementation of the attack.
-GetPossibleSecrets := function(words, L)
+GetPossibleSecrets := function(words, d, D)
   local qws, gs, A, s1, s2;
   qws := [q];
   Append(qws, List(words, w -> ConvertWordToString(w)));
   A := DetToNonDet(SubgroupGenToInvAut(qws));
-  s1 := GetSecretsForGluedAutomatons(A);
-  s2 := GetSecretsForExtendedAutomatons(A, L);
+  s1 := GetSecretsForGluedAutomatons(A, d, D);
+  s2 := GetSecretsForExtendedAutomatons(A, d, D);
   return Union(s1, s2);
 end;
