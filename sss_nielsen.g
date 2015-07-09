@@ -14,7 +14,10 @@ n := 3;
 # The threshold. t <= n.
 t := 2;
 
+m := Binomial(n, t - 1);
+
 letters := ["a", "b", "c", "d", "e", "f", "g", "h"];
+
 Letters := ["A", "B", "C", "D", "E", "F", "G", "H"];
 
 # The platform group
@@ -117,7 +120,7 @@ end;
 # Reduces a set of words.
 ReduceSet := function(words)
   local gs, L;
-  L := [Length(words)];
+  L := [q];
   Append(L, List(words, w -> ConvertWordToString(w)));
   gs := InverseAutomatonToGenerators(SubgroupGenToInvAut(L));
   return List(gs{[2..Length(gs)]}, s -> ConvertStringToWord(F, s));
@@ -162,14 +165,3 @@ FindSecret := function(parts)
   return GetSecretSum(us);
 end;
 
-
-# Test
-m := Binomial(n, t - 1);
-
-us := GenerateRandomReducedSet(F, m);
-
-sharedSecret := ShareSecret(n, t, ApplyRandomNielsenTransform(us, 10));
-
-secret := FindSecret(sharedSecret{[2..Length(sharedSecret)]});
-
-Display(secret);
