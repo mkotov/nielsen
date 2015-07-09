@@ -1,7 +1,7 @@
 # This is an implementation of the secret sharing scheme based on Nielsen transformations from 
 # A. Moldenhauer, G. Rosenberger "Criptogrphic protocols based on Nielsen transformations", Section 4. 
 #
-# Matvei Kotov <matvej.kotov@gmail.com>, 2015.
+# Matvei Kotov, Alexander Ushakov, 2015.
 
 LoadPackage("automata");
 
@@ -127,6 +127,7 @@ ReduceSet := function(words)
 end;
 
 
+# Generates a random reduced set.
 GenerateRandomReducedSet := function(F, m)
   local ws, reduced;
   repeat
@@ -164,4 +165,3 @@ FindSecret := function(parts)
   us := ReduceSet(vs);
   return GetSecretSum(us);
 end;
-
