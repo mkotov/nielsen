@@ -220,8 +220,13 @@ end;
 GetSecretsForExtendedAutomatons := function(A, d, D)  
   local i, j, l, B, g, gs, result; 
   result := []; 
+  B := FoldAutomaton(A);
   for i in [1..NumberStatesOfAutomaton(A)] do
     for j in [i..NumberStatesOfAutomaton(A)] do
+      gs := InverseAutomatonToGenerators(B);
+      if not TestLongWordLengths(gs{[2..Length(gs)]}, 2*D) then
+        continue;
+      fi;       
       for l in [1..D] do
         B := FoldAutomaton(InsertArcToAutomaton(A, i, j, l));
         gs := InverseAutomatonToGenerators(B);
