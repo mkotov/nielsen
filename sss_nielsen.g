@@ -127,6 +127,18 @@ ReduceSet := function(words)
 end;
 
 
+# Returns true if the lengths of all words in an interval [1, D].
+TestLongWordLengths := function(gs, D)
+  local g;
+  for g in gs do
+    if Length(g) > D then
+      return false;    
+    fi;
+  od;
+  return true;
+end;
+
+
 # Returns true if the lengths of all words in an interval [d, D].
 TestWordLengths := function(gs, d, D)
   local g;
