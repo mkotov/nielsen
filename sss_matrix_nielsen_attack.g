@@ -141,6 +141,55 @@ ReduceWS := function(ws, xs, as)
 end;
 
 
+ApplyShortSubs := function(ws, xs)
+  local i, j, ts, zs, length, l, best_length, subs;
+  zs := ShallowCopy(ws);
+  subs := ShallowCopy(xs);
+  best_length := Sum(List(zs, z -> Length(z)));
+  while true do
+    l := best_length;
+    for i in [1..Length(xs)] do
+      for j in [1..Length(xs)] do
+        if i <> j then
+          ts := List(zs, w -> EliminatedWord(w, xs[i], xs[i]*xs[j]));
+          length := Sum(List(ts, z -> Length(z)));
+          if length < best_length then
+            best_length := length;
+            zs := ts;
+            subs[i] := subs[i] * subs[j]^-1;
+          fi;
+          ts := List(zs, w -> EliminatedWord(w, xs[i], xs[j]*xs[i]));
+          length := Sum(List(ts, z -> Length(z)));
+          if length < best_length then
+            best_length := length;
+            zs := ts;
+            subs[i] := subs[j]^-1 * subs[i];
+          fi;
+          ts := List(zs, w -> EliminatedWord(w, xs[i], xs[i]*xs[j]^-1));
+          length := Sum(List(ts, z -> Length(z)));
+          if length < best_length then
+            best_length := length;
+            zs := ts;
+            subs[i] := subs[i] * subs[j];
+          fi;
+          ts := List(zs, w -> EliminatedWord(w, xs[i], xs[j]^-1*xs[i]));
+          length := Sum(List(ts, z -> Length(z)));
+          if length < best_length then
+            best_length := length;
+            zs := ts;
+            subs[i] := subs[j] * subs[i];
+          fi;
+        fi;
+      od;
+    od;
+    if l = best_length then
+      break;
+    fi;
+  od;
+  return [subs, zs];
+end;
+
+
 # Transforms a number to the nearest rational number with the denominator in DENOMS.
 ToRat := function(r, DENOMS)
   local d, t, s, best, bestdist;
@@ -187,9 +236,32 @@ GenerateEquationsByWMs := function(w, Ns, invNs, Xs, invXs, xs)
 end;
 
 
+SolveSystem := function(R, fs)
+  local I, S;
+  StartSingular();
+  I := Ideal(R, Filtered(fs, f -> (f <> 0)));
+  Exec("date");
+  SetInfoLevel( InfoSingular, 3 ); 
+  SingularLibrary("modstd.lib");
+  SingularInterface("ideal I = modStd", [I], "");;
+  SingularInterface("print(I[1]); print", "\"\"", "");;
+  SingularInterface("print(I[2]); print", "\"\"", "");;
+  SingularInterface("print(I[3]); print", "\"\"", "");;
+  SingularInterface("print(I[4]); print", "\"\"", "");;
+  SingularLibrary("solve.lib");
+  SingularInterface("def AC = solve(I, 50, 0); print", "\"\"", "");;
+  SingularInterface("setring AC; print", "\"\"", "");;
+  S := SingularInterface("SOL; print", "\"\"", "list");;
+  if Length(S) = 0 then
+    return fail;
+  fi;
+  return S[1];
+  CloseSingular();
+end;
+
 # Applies the attack.
 ApplyAttack := function(F, n, ws, Ns, DENOMS)
-  local as, R, pxs, xs, Xs, invNs, invXs, fs, I, S;
+  local subs, reducesws, as, R, pxs, xs, Xs, invNs, invXs, fs, I, S;
 
   R := PolynomialRing(Rationals, n : old);;
   pxs := IndeterminatesOfPolynomialRing(R);;
@@ -202,50 +274,57 @@ ApplyAttack := function(F, n, ws, Ns, DENOMS)
   Xs := List(pxs, px -> [[-px, -1 + px^2], [1, -px]]);
   invXs := List(pxs, px -> [[-px, 1 - px^2], [-1, -px]]);
 
-  fs := Concatenation(List(
-      ReduceWS(ListN(ws, as{[1..Length(ws)]}, function(w, a) return w*a^-1; end), xs, as), 
-      w -> GenerateEquationsByWMs(w, Ns, invNs, Xs, invXs, xs)));
+  reducesws := ReduceWS(ListN(ws, as{[1..Length(ws)]}, function(w, a) return w*a^-1; end), xs, as);
+  Print("Rd:", reducesws, "\n");
+  reducesws := ApplyShortSubs(reducesws, xs);
+  subs := reducesws[1];
+  reducesws := reducesws[2];
+  Print("Rd: ", reducesws, "\n");
+  Print("Subs: ", subs, "\n");
+  Print("Length ws: ", List(ws, w -> Length(w)), "\n");
+  Print("Length rws: ", List(reducesws, w -> LengthXS(w, xs)), "\n");
 
-  StartSingular();
-  I := Ideal(R, Filtered(fs, f -> (f <> 0)));
-  SingularLibrary("solve.lib");
-  SingularInterface("def AC = solve", [I, 50, 0], "");;
-  SingularInterface("setring AC; print", "\"\"", "");;
-  S := SingularInterface("SOL; print", "\"\"", "list");;
-  if Length(S) = 0 or Length(S[1]) < 3 then
+  fs := Concatenation(List(reducesws, w -> GenerateEquationsByWMs(w, Ns, invNs, Xs, invXs, xs)));
+  S := SolveSystem(R, fs);
+  if Length(S) < n then
     return fail;
   fi;
-  CloseSingular();
-  return List(List(S[1], r -> ToRat(r, DENOMS)), r -> [[-r, -1 + r^2], [1, -r]]);
+  Print("Step 2");
+  fs := Concatenation(List(ListN(subs, as{[1..Length(subs)]}, function(s, a) return s*a^-1; end), 
+      w -> GenerateEquationsByWMs(w, S, List(S, s -> S^-1), Xs, invXs, xs)));
+  S := SolveSystem(R, fs);
+  if Length(S) < n then
+    return fail;
+  fi;
+  return List(List(S, r -> ToRat(r, DENOMS)), r -> [[-r, -1 + r^2], [1, -r]]);
 end;
 
 
 # Test suite.
 TestAttack := function(n, numOfTransforms)
-  local DENOMS, F, A, M1, M2, M3, us, N1, N2;
+  local Ms, invMs, i, DENOMS, F, A, us, Ns;
 
   F := FreeGroup(2 * n);
 
   # Possible denominators.
   DENOMS := [1..10];
-
-  M1 := GetRandomSLMatrix(2, 5, DENOMS);
-  M2 := GetRandomSLMatrix(8, 11, DENOMS);
-  M3 := GetRandomSLMatrix(14, 17, DENOMS);
-  us := ApplyRandomNielsenTransform([F.1, F.2, F.3], numOfTransforms);
-
-  Print(Length(us[1]), " ", Length(us[2]), "\n");
-
-  N1 := TransformWordToMatrix(us[1], [M1, M2, M3], [M1^-1, M2^-1, M3^-1]);
-  N2 := TransformWordToMatrix(us[2], [M1, M2, M3], [M1^-1, M2^-1, M3^-1]);
+  Ms := [];
+  for i in [1..n] do
+    Add(Ms, GetRandomSLMatrix(2 + i * 6, 5 + i * 6, DENOMS));
+  od;  
+  invMs := List(Ms, M -> M^-1); 
+ 
+  us := ApplyRandomNielsenTransform(GeneratorsOfGroup(F){[1..n]}, numOfTransforms);
+ 
+  Ns := List(us, u -> TransformWordToMatrix(u, Ms, invMs));
 
   Exec("date");
-  A := ApplyAttack(F, n, [us[1], us[2]], [N1, N2], DENOMS);
+  A := ApplyAttack(F, n, us{[1..n-1]}, Ns, DENOMS);
   Exec("date");
   if A = fail then
     Print("FAIL\b");
   else
-    if GetSecretSum(A) = GetSecretSum([M1, M2, M3]) then
+    if GetSecretSum(A) = GetSecretSum(Ms) then
       Print("OK\n");
     else
       Print("ERROR\n");
@@ -286,7 +365,9 @@ TestAttackPr := function()
   w3 := ((F.2^-1 * F.1^-1 * F.4^-1)^3 * F.2^-1 * F.1^-1)^5 * F.4 * F.1 * F.2 * F.3 * F.4^2;
 
   us := [w1, w2, w3];
+  Exec("date");
   A := ApplyAttack(F, n, [us[1], us[2], us[3]], [N1, N2, N3], DENOMS);
+  Exec("date");
   if A = fail then
     Print("FAIL\b");
   else
