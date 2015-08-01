@@ -141,55 +141,6 @@ ReduceWS := function(ws, xs, as)
 end;
 
 
-ApplyShortSubs := function(ws, xs)
-  local i, j, ts, zs, length, l, best_length, subs;
-  zs := ShallowCopy(ws);
-  subs := ShallowCopy(xs);
-  best_length := Sum(List(zs, z -> Length(z)));
-  while true do
-    l := best_length;
-    for i in [1..Length(xs)] do
-      for j in [1..Length(xs)] do
-        if i <> j then
-          ts := List(zs, w -> EliminatedWord(w, xs[i], xs[i]*xs[j]));
-          length := Sum(List(ts, z -> Length(z)));
-          if length < best_length then
-            best_length := length;
-            zs := ts;
-            subs[i] := subs[i] * subs[j]^-1;
-          fi;
-          ts := List(zs, w -> EliminatedWord(w, xs[i], xs[j]*xs[i]));
-          length := Sum(List(ts, z -> Length(z)));
-          if length < best_length then
-            best_length := length;
-            zs := ts;
-            subs[i] := subs[j]^-1 * subs[i];
-          fi;
-          ts := List(zs, w -> EliminatedWord(w, xs[i], xs[i]*xs[j]^-1));
-          length := Sum(List(ts, z -> Length(z)));
-          if length < best_length then
-            best_length := length;
-            zs := ts;
-            subs[i] := subs[i] * subs[j];
-          fi;
-          ts := List(zs, w -> EliminatedWord(w, xs[i], xs[j]^-1*xs[i]));
-          length := Sum(List(ts, z -> Length(z)));
-          if length < best_length then
-            best_length := length;
-            zs := ts;
-            subs[i] := subs[j] * subs[i];
-          fi;
-        fi;
-      od;
-    od;
-    if l = best_length then
-      break;
-    fi;
-  od;
-  return [subs, zs];
-end;
-
-
 # Transforms a number to the nearest rational number with the denominator in DENOMS.
 ToRat := function(r, DENOMS)
   local d, t, s, best, bestdist;
@@ -240,24 +191,19 @@ SolveSystem := function(R, fs)
   local I, S;
   StartSingular();
   I := Ideal(R, Filtered(fs, f -> (f <> 0)));
-  Exec("date");
-  SetInfoLevel( InfoSingular, 3 ); 
   SingularLibrary("modstd.lib");
   SingularInterface("ideal I = modStd", [I], "");;
-  SingularInterface("print(I[1]); print", "\"\"", "");;
-  SingularInterface("print(I[2]); print", "\"\"", "");;
-  SingularInterface("print(I[3]); print", "\"\"", "");;
-  SingularInterface("print(I[4]); print", "\"\"", "");;
   SingularLibrary("solve.lib");
   SingularInterface("def AC = solve(I, 50, 0); print", "\"\"", "");;
   SingularInterface("setring AC; print", "\"\"", "");;
   S := SingularInterface("SOL; print", "\"\"", "list");;
-  if Length(S) = 0 then
+  if Length(S) <> 1 then
     return fail;
   fi;
-  return S[1];
   CloseSingular();
+  return S[1];
 end;
+
 
 # Applies the attack.
 ApplyAttack := function(F, n, ws, Ns, DENOMS)
@@ -276,22 +222,10 @@ ApplyAttack := function(F, n, ws, Ns, DENOMS)
 
   reducesws := ReduceWS(ListN(ws, as{[1..Length(ws)]}, function(w, a) return w*a^-1; end), xs, as);
   Print("Rd:", reducesws, "\n");
-  reducesws := ApplyShortSubs(reducesws, xs);
-  subs := reducesws[1];
-  reducesws := reducesws[2];
-  Print("Rd: ", reducesws, "\n");
-  Print("Subs: ", subs, "\n");
   Print("Length ws: ", List(ws, w -> Length(w)), "\n");
   Print("Length rws: ", List(reducesws, w -> LengthXS(w, xs)), "\n");
 
   fs := Concatenation(List(reducesws, w -> GenerateEquationsByWMs(w, Ns, invNs, Xs, invXs, xs)));
-  S := SolveSystem(R, fs);
-  if Length(S) < n then
-    return fail;
-  fi;
-  Print("Step 2");
-  fs := Concatenation(List(ListN(subs, as{[1..Length(subs)]}, function(s, a) return s*a^-1; end), 
-      w -> GenerateEquationsByWMs(w, S, List(S, s -> S^-1), Xs, invXs, xs)));
   S := SolveSystem(R, fs);
   if Length(S) < n then
     return fail;
