@@ -1,2 +1,2 @@
 # nielsen
-Secret sharing scheme based on Nielsen transformations
+Attacks on secret sharing schemes based on Nielsen transformations
